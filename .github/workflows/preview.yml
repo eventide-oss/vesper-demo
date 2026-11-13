@@ -1,0 +1,38 @@
+# Builds the image of each pull request and pushes it as
+# ghcr.io/eventide-oss/vesper-demo:pr-<number>-<head commit>, the image of
+# the PreviewSource of this repository. Vesper deploys it once this workflow
+# succeeds on the head commit.
+name: Preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The head commit of the pull request, not github.sha, which is the
+      # merge commit GitHub builds for pull requests.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/eventide-oss/vesper-demo:pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          build-args: |
+            PR_NUMBER=${{ github.event.pull_request.number }}
+            COMMIT_SHA=${{ github.event.pull_request.head.sha }}

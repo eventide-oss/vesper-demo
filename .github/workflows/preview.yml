@@ -2,6 +2,10 @@
 # ghcr.io/eventide-oss/vesper-demo:pr-<number>-<head commit>, the image of
 # the PreviewSource of this repository. Vesper deploys it once this workflow
 # succeeds on the head commit.
+#
+# A pull request from a fork gets a read-only token: the image is built but
+# not pushed, so the run still succeeds. A maintainer reads the code, pushes
+# the image, then approves the preview with the label preview.
 name: Preview
 
 on:
@@ -21,7 +25,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+      - if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -31,7 +36,7 @@ jobs:
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          push: true
+          push: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
           tags: ghcr.io/eventide-oss/vesper-demo:pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
           build-args: |
             PR_NUMBER=${{ github.event.pull_request.number }}
